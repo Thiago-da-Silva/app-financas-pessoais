@@ -19,6 +19,15 @@ services:
         source: /*
         destination: /index.html
     headers:
+      # arquivos com hash no nome: podem ficar em cache para sempre
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
+      # página principal: sem cache, para a versão nova aparecer logo após o deploy
+      # (o padrão do Render guarda o HTML por até 5 minutos na CDN)
+      - path: /
+        name: Cache-Control
+        value: no-cache
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
