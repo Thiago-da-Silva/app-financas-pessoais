@@ -25,7 +25,7 @@ Os testes unitários (Vitest) cobrem as regras de negócio em `src/domain` (fatu
 ## Configurando o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (plano gratuito).
-2. No **SQL Editor**, cole e rode o conteúdo de [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). Ele cria as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
+2. No **SQL Editor**, cole e rode o conteúdo de [`supabase/migrations/20261104000000_init.sql`](supabase/migrations/20261104000000_init.sql). Ele cria as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
 3. Em **Authentication → URL Configuration**, informe a URL do site (ex.: `https://seu-app.onrender.com`) em *Site URL* e em *Redirect URLs*, incluindo `https://seu-app.onrender.com/redefinir-senha`.
 4. Copie `.env.example` para `.env` e preencha com os dados de **Project Settings → API**:
 
