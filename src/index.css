@@ -114,6 +114,12 @@
   .dark {
     color-scheme: dark;
   }
+  /* lista nativa de opções do <select> (Windows/Chrome usa fundo branco por padrão) */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--foreground);
+  }
 }
 
 .recharts-wrapper *:focus {
