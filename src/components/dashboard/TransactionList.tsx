@@ -57,6 +57,15 @@ export function TransactionList({
 
   // Cartões no topo, depois pendentes e por fim os já pagos
   const sections: ListSection[] = useMemo(() => orderListItems(data, month, transactions), [transactions, data, month]);
+  // Seções recolhidas pelo usuário. Não é salvo: ao abrir o app, todas começam abertas.
+  const [collapsed, setCollapsed] = useState<Set<ListSection["key"]>>(() => new Set());
+  const toggleSection = (key: ListSection["key"]) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   if (!sections.length) {
     return (
@@ -85,13 +94,11 @@ export function TransactionList({
           {sections.map((section) => (
             <Fragment key={section.key}>
               <tr>
-                <td colSpan={7} className="bg-muted/40 px-4 pb-1.5 pt-3">
-                  <SectionTitle section={section} />
+                <td colSpan={7} className="bg-muted/40 p-0">
+                  <SectionTitle section={section} open={!collapsed.has(section.key)} onToggle={() => toggleSection(section.key)} className="px-4" />
                 </td>
               </tr>
-              {section.items.map((it) => (
-                <DesktopItem key={itemKey(it)} it={it} ctx={ctx} />
-              ))}
+              {!collapsed.has(section.key) && section.items.map((it) => <DesktopItem key={itemKey(it)} it={it} ctx={ctx} />)}
             </Fragment>
           ))}
         </tbody>
@@ -101,12 +108,10 @@ export function TransactionList({
       <ul className="divide-y divide-border pb-16 md:hidden">
         {sections.map((section) => (
           <Fragment key={section.key}>
-            <li className="bg-muted/40 px-3 pb-1.5 pt-3">
-              <SectionTitle section={section} />
+            <li className="bg-muted/40">
+              <SectionTitle section={section} open={!collapsed.has(section.key)} onToggle={() => toggleSection(section.key)} className="px-3" />
             </li>
-            {section.items.map((it) => (
-              <MobileItem key={itemKey(it)} it={it} ctx={ctx} />
-            ))}
+            {!collapsed.has(section.key) && section.items.map((it) => <MobileItem key={itemKey(it)} it={it} ctx={ctx} />)}
           </Fragment>
         ))}
       </ul>
@@ -117,12 +122,33 @@ export function TransactionList({
 const itemKey = (it: ListItem) =>
   it.type === "tx" ? it.tx.id : it.type === "invoice" ? `inv-${it.invoice.card.id}` : `ben-${it.group.card.id}`;
 
-function SectionTitle({ section }: { section: ListSection }) {
+function SectionTitle({
+  section,
+  open,
+  onToggle,
+  className,
+}: {
+  section: ListSection;
+  open: boolean;
+  onToggle(): void;
+  className?: string;
+}) {
   return (
-    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      title={open ? `Recolher ${section.title.toLowerCase()}` : `Expandir ${section.title.toLowerCase()}`}
+      className={cn(
+        "flex w-full cursor-pointer items-center gap-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground",
+        className,
+      )}
+    >
+      <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", !open && "-rotate-90")} />
       {section.title}
       <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium normal-case tracking-normal">{section.items.length}</span>
-    </p>
+      {!open && <span className="ml-auto text-[10px] font-medium normal-case tracking-normal">recolhido</span>}
+    </button>
   );
 }
 
