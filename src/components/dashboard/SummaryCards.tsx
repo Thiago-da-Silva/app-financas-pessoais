@@ -101,7 +101,16 @@ export function SummaryCards({ s, carry }: { s: MonthSummary; carry: boolean }) 
           value={s.predicted}
           icon={<Wallet />}
           tone="primary"
-          sub={s.benefits != null ? `ao final do mês · inclui ${money(s.benefits)} de benefícios` : "ao final do mês"}
+          sub={
+            <>
+              {s.benefits != null ? `ao final do mês · inclui ${money(s.benefits)} de benefícios` : "ao final do mês"}
+              {s.undefinedCount > 0 && (
+                <span className="mt-0.5 block font-medium text-warning">
+                  {s.undefinedCount} {s.undefinedCount === 1 ? "lançamento sem valor definido" : "lançamentos sem valor definido"}
+                </span>
+              )}
+            </>
+          }
           className="col-span-2 lg:col-span-1"
           info={
             <p className="text-muted-foreground">

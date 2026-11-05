@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, Info, Pencil, Receipt, Repeat, Trash2, Utensils } from "lucide-react";
 import type { Category, CreditCard, FinanceData, Transaction } from "@/lib/types";
 import { PAYMENT_LABELS } from "@/lib/types";
-import { installmentMap, isBenefitTx, isOverdue, type BenefitGroup, type Invoice } from "@/domain/finance";
+import { installmentMap, isBenefitTx, isOverdue, isUndefinedAmount, type BenefitGroup, type Invoice } from "@/domain/finance";
 import { orderListItems, type ListItem, type ListSection } from "@/domain/listOrder";
 import { usePrefs } from "@/hooks/prefs";
 import { Button } from "@/components/ui/button";
@@ -207,6 +207,15 @@ function CategoryTag({ tx, ctx }: { tx: Transaction; ctx: Ctx }) {
 function Amount({ tx, className }: { tx: Transaction; className?: string }) {
   const { money } = usePrefs();
   const income = tx.kind === "income";
+  if (isUndefinedAmount(tx))
+    return (
+      <span
+        className={cn("whitespace-nowrap rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning", className)}
+        title="Valor ainda não definido: edite o lançamento para informar"
+      >
+        A definir
+      </span>
+    );
   return (
     <span className={cn("font-semibold tabular whitespace-nowrap", income ? "text-income" : "text-foreground", className)}>
       {income ? "+ " : "− "}

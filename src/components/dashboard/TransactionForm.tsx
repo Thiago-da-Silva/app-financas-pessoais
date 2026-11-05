@@ -50,6 +50,9 @@ export function TransactionForm({
   const [s, setS] = useState<State>(() => initial());
   const [errors, setErrors] = useState<Partial<Record<keyof State, string>>>({});
   const [askScope, setAskScope] = useState(false);
+  // valor zerado é permitido (ex.: valor que só se conhece no mês), mas pede confirmação
+  const [askZero, setAskZero] = useState(false);
+  const [zeroConfirmed, setZeroConfirmed] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
 
   const editingTx = mode.type === "edit" ? mode.tx : null;
@@ -97,6 +100,8 @@ export function TransactionForm({
       setS(initial());
       setErrors({});
       setAskScope(false);
+      setAskZero(false);
+      setZeroConfirmed(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
@@ -145,15 +150,19 @@ export function TransactionForm({
   function validate() {
     const e: typeof errors = {};
     if (!s.name.trim()) e.name = "Informe um nome";
-    if (s.amount <= 0) e.amount = "Informe um valor";
+    if (s.amount < 0) e.amount = "Valor inválido";
     if (!s.date) e.date = "Informe a data";
     if (s.recurrence === "installment" && (s.installments < 1 || s.installments > 120)) e.installments = "Entre 1 e 120";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  async function save(scope?: EditScope) {
+  async function save(scope?: EditScope, zeroOk = zeroConfirmed) {
     if (!validate()) return;
+    if (s.amount === 0 && !zeroOk) {
+      setAskZero(true);
+      return;
+    }
     const input = toInput();
     if (mode.type === "edit") {
       if (series && !scope) {
@@ -169,7 +178,9 @@ export function TransactionForm({
           ? `${input.installments}x de ${money(input.amount)}`
           : input.recurrence === "fixed"
             ? "lançamento fixo mensal"
-            : money(input.amount);
+            : input.amount === 0
+              ? "valor a definir"
+              : money(input.amount);
       toast.success(input.kind === "income" ? "Entrada adicionada" : "Saída adicionada", { description: `${input.name} · ${label}` });
     }
     setAskScope(false);
@@ -364,6 +375,30 @@ export function TransactionForm({
           <button type="submit" className="hidden" />
         </form>
       </Dialog>
+
+      <Dialog
+        open={askZero}
+        onOpenChange={setAskZero}
+        title="Salvar com valor zerado?"
+        description="Este lançamento está com valor R$ 0,00. Ele vai aparecer como “A definir” na lista, e você pode definir o valor depois editando o mês."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setAskZero(false)}>
+              Voltar
+            </Button>
+            <Button
+              disabled={pending}
+              onClick={() => {
+                setZeroConfirmed(true);
+                setAskZero(false);
+                save(undefined, true);
+              }}
+            >
+              Salvar zerado
+            </Button>
+          </>
+        }
+      />
 
       <Dialog
         open={askScope}

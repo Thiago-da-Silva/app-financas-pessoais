@@ -51,6 +51,7 @@ export const isBenefitTx = (t: Pick<Transaction, "payment_method">) => t.payment
 export function isOverdue(t: Transaction, cardsById: Map<string, CreditCard>, now = today()): boolean {
   // gastos no cartão benefício são debitados na hora: nunca ficam "vencidos"
   if (isBenefitTx(t)) return false;
+  if (t.amount === 0) return false; // "A definir" não é conta vencida
   return !t.paid && t.kind === "expense" && effectiveDueDate(t, cardsById) < now;
 }
 
@@ -89,7 +90,12 @@ export interface MonthSummary {
   overdueTotal: number;
   /** Saldo dos cartões benefício somado aos saldos (null quando não somado). */
   benefits: number | null;
+  /** Lançamentos do mês ainda sem valor (R$ 0,00 e não pagos): "A definir". */
+  undefinedCount: number;
 }
+
+/** Lançamento pendente com valor zerado: mostrado como "A definir". */
+export const isUndefinedAmount = (t: Pick<Transaction, "amount" | "paid">) => t.amount === 0 && !t.paid;
 
 /** Saldo anterior do dinheiro "comum" (sem cartões benefício). */
 export function previousBalance(data: FinanceData, month: string): number {
@@ -108,10 +114,12 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
   let expensePaid = 0;
   let overdueCount = 0;
   let overdueTotal = 0;
+  let undefinedCount = 0;
   const now = today();
 
   for (const t of data.transactions) {
     if (isBenefitTx(t)) continue; // benefícios têm saldo próprio
+    if (t.month === month && isUndefinedAmount(t)) undefinedCount++;
     if (t.month === month) {
       // crédito/estorno no cartão abate as saídas (não é uma "entrada" de dinheiro)
       const isCardCredit = t.kind === "income" && t.payment_method === "card";
@@ -141,6 +149,7 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
     overdueCount,
     overdueTotal,
     benefits: null,
+    undefinedCount,
   };
 
   // Opção do perfil: somar o saldo dos benefícios aos saldos (entradas/saídas continuam sem eles)
