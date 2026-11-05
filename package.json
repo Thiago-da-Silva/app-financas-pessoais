@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
@@ -31,6 +33,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "tailwindcss": "^4.3.4",
     "typescript": "5.6",
-    "vite": "^6.4.5"
+    "vite": "^6.4.5",
+    "vitest": "^3.2.7"
   }
 }

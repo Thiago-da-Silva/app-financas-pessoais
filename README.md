@@ -13,6 +13,15 @@ npm run dev
 
 Sem configurar o Supabase, o app já funciona no **modo demonstração**: botão "Ver demonstração" na tela de login, ou usuário `teste` / senha `teste`. Os dados fictícios ficam só no navegador (localStorage) e podem ser restaurados em *Perfil → Restaurar dados da demonstração*.
 
+## Testes
+
+```bash
+npm test          # roda uma vez
+npm run test:watch  # modo observação durante o desenvolvimento
+```
+
+Os testes unitários (Vitest) cobrem as regras de negócio em `src/domain` (faturas, fechamento, parcelas, fixos, saldos, limite do cartão, edição e exclusão de séries, desfazer) e os utilitários de data e moeda em `src/lib`. O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda os testes e o build em cada push e pull request.
+
 ## Configurando o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (plano gratuito).

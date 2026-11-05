@@ -8,7 +8,10 @@ export function formatMoney(cents: number): string {
 export function parseMoney(text: string): number {
   const clean = text.replace(/[^\d,.-]/g, "");
   if (!clean) return 0;
-  const normalized = clean.includes(",") ? clean.replace(/\./g, "").replace(",", ".") : clean;
+  let normalized: string;
+  if (clean.includes(",")) normalized = clean.replace(/\./g, "").replace(",", "."); // 1.234,56
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(clean)) normalized = clean.replace(/\./g, ""); // 1.000 (milhar)
+  else normalized = clean; // 19.99
   const n = Number(normalized);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
