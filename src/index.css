@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f6f7f9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --muted: #f1f3f6;
+  --muted-foreground: #64748b;
+  --border: #e5e8ee;
+  --input: #dfe3ea;
+  --ring: #10b981;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --accent: #eef1f5;
+  --income: #059669;
+  --income-soft: #ecfdf5;
+  --expense: #e11d48;
+  --expense-soft: #fff1f2;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --info: #4f46e5;
+  --info-soft: #eef2ff;
+  --shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.dark {
+  --background: #0b0d12;
+  --foreground: #e7eaf0;
+  --card: #12151c;
+  --card-foreground: #e7eaf0;
+  --popover: #161a22;
+  --muted: #1a1e27;
+  --muted-foreground: #8b93a5;
+  --border: #232834;
+  --input: #2a303d;
+  --ring: #34d399;
+  --primary: #10b981;
+  --primary-foreground: #04120c;
+  --accent: #1c212b;
+  --income: #34d399;
+  --income-soft: rgb(16 185 129 / 0.12);
+  --expense: #fb7185;
+  --expense-soft: rgb(244 63 94 / 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgb(245 158 11 / 0.12);
+  --info: #818cf8;
+  --info-soft: rgb(99 102 241 / 0.14);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --shadow-card: var(--shadow);
+  --animate-in: fade-in 0.15s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+.recharts-wrapper *:focus {
+  outline: none;
+}
