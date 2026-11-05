@@ -17,9 +17,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          # Chaves novas (sb_publishable_...) vão só no cabeçalho "apikey".
           status=$(curl -s -o /dev/null -w "%{http_code}" \
             "$SUPABASE_URL/rest/v1/categories?select=id&limit=1" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+            -H "apikey: $SUPABASE_ANON_KEY")
           echo "HTTP $status"
-          test "$status" -lt 500
+          test "$status" -eq 200
