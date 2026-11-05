@@ -32,7 +32,7 @@ export function useAction() {
   const key = useFinanceKey();
 
   const mutation = useMutation({
-    mutationFn: async <T,>(args: { fn: Action<T>; optimistic?: (d: FinanceData) => FinanceData }) => {
+    mutationFn: async (args: { fn: Action<unknown>; optimistic?: (d: FinanceData) => FinanceData }) => {
       const data = qc.getQueryData<FinanceData>(key);
       if (!repo || !data) throw new Error("Dados não carregados");
       if (args.optimistic) qc.setQueryData<FinanceData>(key, args.optimistic(data));
@@ -46,7 +46,7 @@ export function useAction() {
 
   return {
     run: <T,>(fn: Action<T>, optimistic?: (d: FinanceData) => FinanceData) =>
-      mutation.mutateAsync({ fn, optimistic } as never) as Promise<T>,
+      mutation.mutateAsync({ fn, optimistic }) as Promise<T>,
     pending: mutation.isPending,
   };
 }

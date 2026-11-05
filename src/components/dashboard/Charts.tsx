@@ -47,7 +47,7 @@ export function CategoryChart({ transactions, categories }: { transactions: Tran
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">Por categoria</h3>
         <div className="flex gap-2">
-          <Segmented
+          <Segmented<"expense" | "income">
             size="sm"
             value={kind}
             onChange={setKind}
