@@ -2,7 +2,8 @@ import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, Info, Pencil, Receipt, Repeat, Trash2, Utensils } from "lucide-react";
 import type { Category, CreditCard, FinanceData, Transaction } from "@/lib/types";
 import { PAYMENT_LABELS } from "@/lib/types";
-import { benefitGroups, installmentMap, invoicesForMonth, isBenefitTx, isOverdue, type BenefitGroup, type Invoice } from "@/domain/finance";
+import { installmentMap, isBenefitTx, isOverdue, type BenefitGroup, type Invoice } from "@/domain/finance";
+import { orderListItems, type ListItem, type ListSection } from "@/domain/listOrder";
 import { usePrefs } from "@/hooks/prefs";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Dot, EmptyState } from "@/components/ui/misc";
@@ -17,11 +18,6 @@ export interface RowActions {
   onDelete(t: Transaction): void;
   onTogglePaid(ids: string[], paid: boolean): void;
 }
-
-type Item =
-  | { type: "tx"; date: string; tx: Transaction }
-  | { type: "invoice"; date: string; invoice: Invoice }
-  | { type: "benefit"; date: string; group: BenefitGroup };
 
 interface Ctx {
   data: FinanceData;
@@ -59,16 +55,10 @@ export function TransactionList({
     [data, month, actions],
   );
 
-  const items: Item[] = useMemo(() => {
-    const out: Item[] = transactions
-      .filter((t) => t.payment_method !== "card" && !isBenefitTx(t))
-      .map((tx) => ({ type: "tx", date: tx.date, tx }));
-    for (const invoice of invoicesForMonth(data, month, transactions)) out.push({ type: "invoice", date: invoice.dueDate, invoice });
-    for (const group of benefitGroups(data, month, transactions)) out.push({ type: "benefit", date: group.firstDate, group });
-    return out.sort((a, b) => a.date.localeCompare(b.date));
-  }, [transactions, data, month]);
+  // Cartões no topo, depois pendentes e por fim os já pagos
+  const sections: ListSection[] = useMemo(() => orderListItems(data, month, transactions), [transactions, data, month]);
 
-  if (!items.length) {
+  if (!sections.length) {
     return (
       <EmptyState icon={<Receipt />} title="Nenhum lançamento encontrado">
         Adicione uma entrada ou saída para este mês.
@@ -92,32 +82,60 @@ export function TransactionList({
           </tr>
         </thead>
         <tbody>
-          {items.map((it) =>
-            it.type === "tx" ? (
-              <DesktopRow key={it.tx.id} tx={it.tx} ctx={ctx} />
-            ) : it.type === "invoice" ? (
-              <DesktopInvoice key={`inv-${it.invoice.card.id}`} invoice={it.invoice} ctx={ctx} />
-            ) : (
-              <DesktopBenefit key={`ben-${it.group.card.id}`} group={it.group} ctx={ctx} />
-            ),
-          )}
+          {sections.map((section) => (
+            <Fragment key={section.key}>
+              <tr>
+                <td colSpan={7} className="bg-muted/40 px-4 pb-1.5 pt-3">
+                  <SectionTitle section={section} />
+                </td>
+              </tr>
+              {section.items.map((it) => (
+                <DesktopItem key={itemKey(it)} it={it} ctx={ctx} />
+              ))}
+            </Fragment>
+          ))}
         </tbody>
       </table>
 
       {/* Celular: lista compacta */}
       <ul className="divide-y divide-border pb-16 md:hidden">
-        {items.map((it) =>
-          it.type === "tx" ? (
-            <MobileRow key={it.tx.id} tx={it.tx} ctx={ctx} />
-          ) : it.type === "invoice" ? (
-            <MobileInvoice key={`inv-${it.invoice.card.id}`} invoice={it.invoice} ctx={ctx} />
-          ) : (
-            <MobileBenefit key={`ben-${it.group.card.id}`} group={it.group} ctx={ctx} />
-          ),
-        )}
+        {sections.map((section) => (
+          <Fragment key={section.key}>
+            <li className="bg-muted/40 px-3 pb-1.5 pt-3">
+              <SectionTitle section={section} />
+            </li>
+            {section.items.map((it) => (
+              <MobileItem key={itemKey(it)} it={it} ctx={ctx} />
+            ))}
+          </Fragment>
+        ))}
       </ul>
     </>
   );
+}
+
+const itemKey = (it: ListItem) =>
+  it.type === "tx" ? it.tx.id : it.type === "invoice" ? `inv-${it.invoice.card.id}` : `ben-${it.group.card.id}`;
+
+function SectionTitle({ section }: { section: ListSection }) {
+  return (
+    <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {section.title}
+      <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium normal-case tracking-normal">{section.items.length}</span>
+    </p>
+  );
+}
+
+function DesktopItem({ it, ctx }: { it: ListItem; ctx: Ctx }) {
+  if (it.type === "tx") return <DesktopRow tx={it.tx} ctx={ctx} />;
+  if (it.type === "invoice") return <DesktopInvoice invoice={it.invoice} ctx={ctx} />;
+  return <DesktopBenefit group={it.group} ctx={ctx} />;
+}
+
+function MobileItem({ it, ctx }: { it: ListItem; ctx: Ctx }) {
+  if (it.type === "tx") return <MobileRow tx={it.tx} ctx={ctx} />;
+  if (it.type === "invoice") return <MobileInvoice invoice={it.invoice} ctx={ctx} />;
+  return <MobileBenefit group={it.group} ctx={ctx} />;
 }
 
 // ---------------------------------------------------------------------
@@ -489,6 +507,7 @@ function MobileBenefit({ group, ctx }: { group: BenefitGroup; ctx: Ctx }) {
   return (
     <li>
       <button type="button" className="flex w-full cursor-pointer items-center gap-3 py-3 pl-3 pr-1 text-left" onClick={() => setOpen(!open)}>
+        <span className="size-5 shrink-0" aria-hidden />
         <span className="grid size-8 shrink-0 place-items-center rounded-lg text-white" style={{ background: group.card.color }}>
           <Utensils className="size-4" />
         </span>
