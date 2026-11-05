@@ -1,5 +1,5 @@
 import type { Category, CreditCard, FinanceData, Kind, Transaction } from "@/lib/types";
-import { PAYMENT_LABELS } from "@/lib/types";
+import { isBenefitCard, isCreditCard, PAYMENT_LABELS } from "@/lib/types";
 import { addMonths, dateInMonth, monthOf, today } from "@/lib/dates";
 
 // ---------------------------------------------------------------------
@@ -16,8 +16,9 @@ export function invoiceMonth(date: string, card: Pick<CreditCard, "closing_day" 
   return card.due_day > card.closing_day ? closeMonth : addMonths(closeMonth, 1);
 }
 
+/** Mês de competência: fatura para cartão de crédito; mês da data para o resto (inclusive benefício). */
 export function competenceMonth(date: string, card: CreditCard | undefined | null): string {
-  return card ? invoiceMonth(date, card) : monthOf(date);
+  return card && isCreditCard(card) ? invoiceMonth(date, card) : monthOf(date);
 }
 
 export function invoiceDueDate(month: string, card: CreditCard): string {
@@ -31,7 +32,8 @@ export function invoiceDueDate(month: string, card: CreditCard): string {
 export const signed = (t: Pick<Transaction, "kind" | "amount">) => (t.kind === "income" ? t.amount : -t.amount);
 
 export function paymentLabel(t: Pick<Transaction, "payment_method" | "card_id">, cards: CreditCard[]): string {
-  if (t.payment_method === "card") return cards.find((c) => c.id === t.card_id)?.name ?? "Cartão";
+  if (t.payment_method === "card" || t.payment_method === "benefit")
+    return cards.find((c) => c.id === t.card_id)?.name ?? (t.payment_method === "card" ? "Cartão" : "Benefício");
   return PAYMENT_LABELS[t.payment_method];
 }
 
@@ -44,7 +46,11 @@ export function effectiveDueDate(t: Transaction, cardsById: Map<string, CreditCa
   return t.date;
 }
 
+export const isBenefitTx = (t: Pick<Transaction, "payment_method">) => t.payment_method === "benefit";
+
 export function isOverdue(t: Transaction, cardsById: Map<string, CreditCard>, now = today()): boolean {
+  // gastos no cartão benefício são debitados na hora: nunca ficam "vencidos"
+  if (isBenefitTx(t)) return false;
   return !t.paid && t.kind === "expense" && effectiveDueDate(t, cardsById) < now;
 }
 
@@ -81,12 +87,15 @@ export interface MonthSummary {
   predicted: number; // saldo previsto
   overdueCount: number;
   overdueTotal: number;
+  /** Saldo dos cartões benefício somado aos saldos (null quando não somado). */
+  benefits: number | null;
 }
 
+/** Saldo anterior do dinheiro "comum" (sem cartões benefício). */
 export function previousBalance(data: FinanceData, month: string): number {
   if (!data.profile.carry_balance) return 0;
   let total = data.profile.initial_balance;
-  for (const t of data.transactions) if (t.paid && t.month < month) total += signed(t);
+  for (const t of data.transactions) if (t.paid && t.month < month && !isBenefitTx(t)) total += signed(t);
   return total;
 }
 
@@ -102,6 +111,7 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
   const now = today();
 
   for (const t of data.transactions) {
+    if (isBenefitTx(t)) continue; // benefícios têm saldo próprio
     if (t.month === month) {
       // crédito/estorno no cartão abate as saídas (não é uma "entrada" de dinheiro)
       const isCardCredit = t.kind === "income" && t.payment_method === "card";
@@ -120,7 +130,7 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
     }
   }
 
-  return {
+  const summary: MonthSummary = {
     previous,
     income,
     expense,
@@ -130,7 +140,83 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
     predicted: previous + income - expense,
     overdueCount,
     overdueTotal,
+    benefits: null,
   };
+
+  // Opção do perfil: somar o saldo dos benefícios aos saldos (entradas/saídas continuam sem eles)
+  if (data.profile.sum_benefits) {
+    const b = benefitSummary(data, month);
+    summary.previous += b.previous;
+    summary.realized += b.realized;
+    summary.predicted += b.balance;
+    summary.benefits = b.balance;
+  }
+  return summary;
+}
+
+// ---------------------------------------------------------------------
+// Cartões benefício (VR/VA): saldo próprio que acumula indefinidamente
+// ---------------------------------------------------------------------
+
+export interface BenefitSummary {
+  previous: number; // saldo acumulado de todos os meses anteriores
+  income: number; // recargas do mês
+  expense: number; // gastos do mês
+  balance: number; // saldo ao final do mês
+  realized: number; // saldo considerando só o que já aconteceu (data <= hoje)
+}
+
+/**
+ * Saldo de um cartão benefício (ou de todos, sem `cardId`).
+ * O status "pago" é ignorado: recargas e gastos no benefício acontecem automaticamente.
+ */
+export function benefitSummary(data: FinanceData, month: string, cardId?: string): BenefitSummary {
+  const now = today();
+  let previous = 0;
+  let income = 0;
+  let expense = 0;
+  let happened = 0;
+  for (const t of data.transactions) {
+    if (!isBenefitTx(t) || (cardId && t.card_id !== cardId)) continue;
+    if (t.month < month) previous += signed(t);
+    else if (t.month === month) {
+      if (t.kind === "income") income += t.amount;
+      else expense += t.amount;
+      if (t.date <= now) happened += signed(t);
+    }
+  }
+  return { previous, income, expense, balance: previous + income - expense, realized: previous + happened };
+}
+
+export interface BenefitGroup {
+  card: CreditCard;
+  items: Transaction[];
+  income: number;
+  expense: number;
+  /** Saldo do cartão ao final do mês (acumulado). */
+  balance: number;
+  firstDate: string;
+}
+
+/** Agrupa os lançamentos de cada cartão benefício no mês (para a lista). */
+export function benefitGroups(data: FinanceData, month: string, items?: Transaction[]): BenefitGroup[] {
+  const source = items ?? data.transactions.filter((t) => t.month === month);
+  const out: BenefitGroup[] = [];
+  for (const card of data.cards) {
+    if (!isBenefitCard(card)) continue;
+    const list = source.filter((t) => isBenefitTx(t) && t.card_id === card.id);
+    if (!list.length) continue;
+    list.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+    out.push({
+      card,
+      items: list,
+      income: list.filter((t) => t.kind === "income").reduce((s, t) => s + t.amount, 0),
+      expense: list.filter((t) => t.kind === "expense").reduce((s, t) => s + t.amount, 0),
+      balance: benefitSummary(data, month, card.id).balance,
+      firstDate: list[0].date,
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------
@@ -237,7 +323,7 @@ export function categoryBreakdown(transactions: Transaction[], categories: Categ
   const sums = new Map<string, number>();
   for (const t of transactions) {
     if (t.kind !== kind) continue;
-    if (kind === "income" && t.payment_method === "card") continue;
+    if (kind === "income" && (t.payment_method === "card" || isBenefitTx(t))) continue;
     const key = t.category_id && byId.has(t.category_id) ? t.category_id : "none";
     sums.set(key, (sums.get(key) ?? 0) + t.amount);
   }

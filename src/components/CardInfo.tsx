@@ -1,15 +1,47 @@
 import type { ReactNode } from "react";
-import { CreditCard as CardIcon } from "lucide-react";
+import { CreditCard as CardIcon, Utensils } from "lucide-react";
 import type { CreditCard, FinanceData } from "@/lib/types";
-import { cardUsage } from "@/domain/finance";
+import { isBenefitCard } from "@/lib/types";
+import { benefitSummary, cardUsage } from "@/domain/finance";
 import { usePrefs } from "@/hooks/prefs";
 import { Progress } from "@/components/ui/misc";
 import { InfoPopover } from "@/components/ui/overlay";
 import { formatPercent } from "@/lib/money";
 import { monthLabel } from "@/lib/dates";
 
+/** Saldo acumulado de um cartão benefício (VR/VA). */
+export function BenefitDetails({ data, card, month }: { data: FinanceData; card: CreditCard; month: string }) {
+  const { money } = usePrefs();
+  const b = benefitSummary(data, month, card.id);
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className="grid size-8 place-items-center rounded-lg text-white" style={{ background: card.color }}>
+          <Utensils className="size-4" />
+        </span>
+        <div>
+          <p className="font-semibold leading-tight">{card.name}</p>
+          <p className="text-xs text-muted-foreground">Cartão benefício · saldo acumula todo mês</p>
+        </div>
+      </div>
+      <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+        <p className="text-xs text-muted-foreground">Saldo ao final de {monthLabel(month).toLowerCase()}</p>
+        <p className={`text-lg font-semibold tabular ${b.balance < 0 ? "text-expense" : ""}`}>{money(b.balance)}</p>
+        {b.balance < 0 && <p className="text-xs text-expense">Os gastos passaram do saldo disponível.</p>}
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+        <Item label="Saldo anterior" value={money(b.previous)} />
+        <Item label="Disponível hoje" value={money(b.realized)} tone={b.realized < 0 ? "text-expense" : "text-income"} />
+        <Item label="Recargas no mês" value={money(b.income)} tone="text-income" />
+        <Item label="Gastos no mês" value={money(b.expense)} />
+      </dl>
+    </div>
+  );
+}
+
 export function CardUsageDetails({ data, card, month }: { data: FinanceData; card: CreditCard; month: string }) {
   const { money } = usePrefs();
+  if (isBenefitCard(card)) return <BenefitDetails data={data} card={card} month={month} />;
   const u = cardUsage(data, card, month);
   return (
     <div className="flex flex-col gap-3">

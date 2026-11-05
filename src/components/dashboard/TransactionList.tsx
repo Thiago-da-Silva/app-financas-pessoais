@@ -1,8 +1,8 @@
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, Info, Pencil, Receipt, Repeat, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, Info, Pencil, Receipt, Repeat, Trash2, Utensils } from "lucide-react";
 import type { Category, CreditCard, FinanceData, Transaction } from "@/lib/types";
 import { PAYMENT_LABELS } from "@/lib/types";
-import { installmentMap, invoicesForMonth, isOverdue, type Invoice } from "@/domain/finance";
+import { benefitGroups, installmentMap, invoicesForMonth, isBenefitTx, isOverdue, type BenefitGroup, type Invoice } from "@/domain/finance";
 import { usePrefs } from "@/hooks/prefs";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Dot, EmptyState } from "@/components/ui/misc";
@@ -18,7 +18,10 @@ export interface RowActions {
   onTogglePaid(ids: string[], paid: boolean): void;
 }
 
-type Item = { type: "tx"; date: string; tx: Transaction } | { type: "invoice"; date: string; invoice: Invoice };
+type Item =
+  | { type: "tx"; date: string; tx: Transaction }
+  | { type: "invoice"; date: string; invoice: Invoice }
+  | { type: "benefit"; date: string; group: BenefitGroup };
 
 interface Ctx {
   data: FinanceData;
@@ -57,8 +60,11 @@ export function TransactionList({
   );
 
   const items: Item[] = useMemo(() => {
-    const out: Item[] = transactions.filter((t) => t.payment_method !== "card").map((tx) => ({ type: "tx", date: tx.date, tx }));
+    const out: Item[] = transactions
+      .filter((t) => t.payment_method !== "card" && !isBenefitTx(t))
+      .map((tx) => ({ type: "tx", date: tx.date, tx }));
     for (const invoice of invoicesForMonth(data, month, transactions)) out.push({ type: "invoice", date: invoice.dueDate, invoice });
+    for (const group of benefitGroups(data, month, transactions)) out.push({ type: "benefit", date: group.firstDate, group });
     return out.sort((a, b) => a.date.localeCompare(b.date));
   }, [transactions, data, month]);
 
@@ -89,8 +95,10 @@ export function TransactionList({
           {items.map((it) =>
             it.type === "tx" ? (
               <DesktopRow key={it.tx.id} tx={it.tx} ctx={ctx} />
-            ) : (
+            ) : it.type === "invoice" ? (
               <DesktopInvoice key={`inv-${it.invoice.card.id}`} invoice={it.invoice} ctx={ctx} />
+            ) : (
+              <DesktopBenefit key={`ben-${it.group.card.id}`} group={it.group} ctx={ctx} />
             ),
           )}
         </tbody>
@@ -101,8 +109,10 @@ export function TransactionList({
         {items.map((it) =>
           it.type === "tx" ? (
             <MobileRow key={it.tx.id} tx={it.tx} ctx={ctx} />
-          ) : (
+          ) : it.type === "invoice" ? (
             <MobileInvoice key={`inv-${it.invoice.card.id}`} invoice={it.invoice} ctx={ctx} />
+          ) : (
+            <MobileBenefit key={`ben-${it.group.card.id}`} group={it.group} ctx={ctx} />
           ),
         )}
       </ul>
@@ -193,6 +203,8 @@ function OverdueTag() {
 // ---------------------------------------------------------------------
 
 function DesktopRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: boolean }) {
+  const benefit = isBenefitTx(tx);
+  const done = tx.paid && !benefit;
   const overdue = isOverdue(tx, ctx.cards, ctx.now);
   const card = tx.card_id ? ctx.cards.get(tx.card_id) : undefined;
   return (
@@ -200,13 +212,13 @@ function DesktopRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: b
       className={cn(
         "group border-b border-border/70 transition-colors last:border-0 hover:bg-accent/40",
         nested && "bg-muted/30",
-        tx.paid && "text-muted-foreground",
+        done && "text-muted-foreground",
       )}
     >
       <td className={cn("py-2.5 pl-4 tabular", nested && "text-muted-foreground", overdue && "font-medium text-expense")}>{formatDate(tx.date)}</td>
       <td className={cn("max-w-0 py-2.5 pr-3", nested && "pl-6")}>
         <div className={cn("flex items-center gap-2", nested && "border-l-2 pl-3")} style={nested && card ? { borderColor: card.color } : undefined}>
-          <NameCell tx={tx} ctx={ctx} className={cn(tx.paid && "[&>span:first-child]:text-muted-foreground")} />
+          <NameCell tx={tx} ctx={ctx} className={cn(done && "[&>span:first-child]:text-muted-foreground")} />
           {overdue && !nested && <OverdueTag />}
         </div>
       </td>
@@ -217,14 +229,18 @@ function DesktopRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: b
         {card ? <CardChip data={ctx.data} card={card} month={ctx.month} /> : PAYMENT_LABELS[tx.payment_method as "pix"]}
       </td>
       <td className="py-2.5 pr-4 text-right">
-        <Amount tx={tx} className={cn(tx.paid && "opacity-70")} />
+        <Amount tx={tx} className={cn(done && "opacity-70")} />
       </td>
       <td className="py-2.5 text-center">
-        <Checkbox
-          checked={tx.paid}
-          onCheckedChange={(v) => ctx.actions.onTogglePaid([tx.id], v)}
-          label={tx.paid ? "Marcar como não pago" : "Marcar como pago"}
-        />
+        {benefit ? (
+          <span className="text-xs text-muted-foreground" title="Débito automático no cartão benefício">auto</span>
+        ) : (
+          <Checkbox
+            checked={tx.paid}
+            onCheckedChange={(v) => ctx.actions.onTogglePaid([tx.id], v)}
+            label={tx.paid ? "Marcar como não pago" : "Marcar como pago"}
+          />
+        )}
       </td>
       <td className="py-2.5 pr-3">
         <div className="flex justify-end gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
@@ -311,18 +327,24 @@ function DesktopInvoice({ invoice, ctx }: { invoice: Invoice; ctx: Ctx }) {
 // ---------------------------------------------------------------------
 
 function MobileRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: boolean }) {
+  const benefit = isBenefitTx(tx);
+  const done = tx.paid && !benefit;
   const overdue = isOverdue(tx, ctx.cards, ctx.now);
   const card = tx.card_id ? ctx.cards.get(tx.card_id) : undefined;
   const c = tx.category_id ? ctx.categories.get(tx.category_id) : undefined;
   return (
-    <li className={cn("flex items-center gap-3 py-3 pr-1", nested ? "pl-3" : "pl-3")}>
-      <Checkbox
-        checked={tx.paid}
-        onCheckedChange={(v) => ctx.actions.onTogglePaid([tx.id], v)}
-        label={tx.paid ? "Marcar como não pago" : "Marcar como pago"}
-      />
+    <li className="flex items-center gap-3 py-3 pl-3 pr-1">
+      {benefit ? (
+        <span className="size-5 shrink-0" aria-hidden />
+      ) : (
+        <Checkbox
+          checked={tx.paid}
+          onCheckedChange={(v) => ctx.actions.onTogglePaid([tx.id], v)}
+          label={tx.paid ? "Marcar como não pago" : "Marcar como pago"}
+        />
+      )}
       <div className="min-w-0 flex-1" onClick={() => ctx.actions.onEdit(tx)}>
-        <NameCell tx={tx} ctx={ctx} className={cn(tx.paid && "[&>span:first-child]:text-muted-foreground [&>span:first-child]:line-through decoration-muted-foreground/40")} />
+        <NameCell tx={tx} ctx={ctx} className={cn(done && "[&>span:first-child]:text-muted-foreground [&>span:first-child]:line-through decoration-muted-foreground/40")} />
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className={cn("tabular", overdue && "font-medium text-expense")}>{formatDate(tx.date)}</span>
           <span>·</span>
@@ -337,7 +359,7 @@ function MobileRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: bo
           {overdue && <OverdueTag />}
         </div>
       </div>
-      <Amount tx={tx} className={cn("text-sm", tx.paid && "opacity-70")} />
+      <Amount tx={tx} className={cn("text-sm", done && "opacity-70")} />
       <RowMenu tx={tx} ctx={ctx} />
     </li>
   );
@@ -385,6 +407,107 @@ function MobileInvoice({ invoice, ctx }: { invoice: Invoice; ctx: Ctx }) {
           </div>
           <ul className="divide-y divide-border">
             {invoice.items.map((t) => (
+              <MobileRow key={t.id} tx={t} ctx={ctx} nested />
+            ))}
+          </ul>
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Cartão benefício (VR/VA): grupo com recargas e gastos do mês
+// ---------------------------------------------------------------------
+
+function BenefitTotals({ group, className, stacked }: { group: BenefitGroup; className?: string; stacked?: boolean }) {
+  const { money } = usePrefs();
+  return (
+    <span className={cn("whitespace-nowrap text-xs text-muted-foreground tabular", stacked && "flex flex-col items-end leading-tight", className)}>
+      {group.income > 0 && <span className="text-income">+ {money(group.income)}</span>}
+      {!stacked && group.income > 0 && group.expense > 0 && " · "}
+      {group.expense > 0 && <span>− {money(group.expense)}</span>}
+    </span>
+  );
+}
+
+function BalanceTag({ group }: { group: BenefitGroup }) {
+  const { money } = usePrefs();
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium tabular",
+        group.balance < 0 ? "bg-expense-soft text-expense" : "bg-warning-soft text-warning",
+      )}
+    >
+      Saldo {money(group.balance)}
+    </span>
+  );
+}
+
+function DesktopBenefit({ group, ctx }: { group: BenefitGroup; ctx: Ctx }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Fragment>
+      <tr className="cursor-pointer border-b border-border/70 transition-colors hover:bg-accent/40" onClick={() => setOpen(!open)}>
+        <td className="py-3 pl-4 tabular">{formatDate(group.firstDate)}</td>
+        <td className="max-w-0 py-3 pr-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} />
+            <span className="grid size-6 shrink-0 place-items-center rounded-md text-white" style={{ background: group.card.color }}>
+              <Utensils className="size-3.5" />
+            </span>
+            <span className="shrink-0 font-semibold">Benefício:</span>
+            <CardChip data={ctx.data} card={group.card} month={ctx.month}>
+              <span className="font-semibold">{group.card.name}</span>
+            </CardChip>
+          </div>
+        </td>
+        <td className="py-3 pr-3">
+          <BalanceTag group={group} />
+        </td>
+        <td className="py-3 text-muted-foreground">
+          {group.items.length} {group.items.length === 1 ? "item" : "itens"}
+        </td>
+        <td className="py-3 pr-4 text-right">
+          <BenefitTotals group={group} stacked className="font-semibold" />
+        </td>
+        <td className="py-3 text-center text-xs text-muted-foreground">auto</td>
+        <td className="py-3 pr-4 text-right">
+          <Button variant="ghost" size="sm" onClick={(e) => (e.stopPropagation(), setOpen(!open))}>
+            {open ? "Ocultar" : "Ver itens"}
+          </Button>
+        </td>
+      </tr>
+      {open && group.items.map((t) => <DesktopRow key={t.id} tx={t} ctx={ctx} nested />)}
+    </Fragment>
+  );
+}
+
+function MobileBenefit({ group, ctx }: { group: BenefitGroup; ctx: Ctx }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <button type="button" className="flex w-full cursor-pointer items-center gap-3 py-3 pl-3 pr-1 text-left" onClick={() => setOpen(!open)}>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg text-white" style={{ background: group.card.color }}>
+          <Utensils className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">Benefício: {group.card.name}</p>
+          <BenefitTotals group={group} />
+        </div>
+        <BalanceTag group={group} />
+        <ChevronDown className={cn("mr-2 size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mb-3 ml-3 mr-1 overflow-hidden rounded-xl border-l-2 bg-muted/40" style={{ borderLeftColor: group.card.color }}>
+          <div className="px-3 pt-2.5 text-xs text-muted-foreground">
+            <CardChip data={ctx.data} card={group.card} month={ctx.month}>
+              Ver saldo do cartão
+            </CardChip>
+          </div>
+          <ul className="divide-y divide-border">
+            {group.items.map((t) => (
               <MobileRow key={t.id} tx={t} ctx={ctx} nested />
             ))}
           </ul>

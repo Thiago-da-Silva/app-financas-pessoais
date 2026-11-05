@@ -26,7 +26,11 @@ export function exportCsv(data: FinanceData, transactions: Transaction[], filena
         t.name,
         t.description ?? "",
         t.category_id ? (cats.get(t.category_id) ?? "") : "",
-        t.payment_method === "card" ? `Cartão ${cards.get(t.card_id ?? "") ?? ""}` : PAYMENT_LABELS[t.payment_method],
+        t.payment_method === "card"
+          ? `Cartão ${cards.get(t.card_id ?? "") ?? ""}`
+          : t.payment_method === "benefit"
+            ? `Benefício ${cards.get(t.card_id ?? "") ?? ""}`
+            : PAYMENT_LABELS[t.payment_method],
         i ? `${i.n}/${i.total}` : "",
         ((t.kind === "income" ? 1 : -1) * t.amount / 100).toFixed(2).replace(".", ","),
         t.paid ? "Sim" : "Não",

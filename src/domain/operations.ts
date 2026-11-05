@@ -30,7 +30,7 @@ type Common = Pick<
 >;
 
 function common(input: EntryInput | Series): Common {
-  const isCard = input.payment_method === "card";
+  const isCard = input.payment_method === "card" || input.payment_method === "benefit";
   return {
     kind: input.kind,
     name: input.name.trim(),

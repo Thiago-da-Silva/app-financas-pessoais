@@ -37,10 +37,11 @@ export function buildDemoData(): FinanceData {
   };
 
   const cards: CreditCard[] = [
-    { id: uid(), name: "Roxinho", color: "#8b5cf6", credit_limit: 800000, closing_day: 3, due_day: 10, archived: false },
-    { id: uid(), name: "Laranja", color: "#f97316", credit_limit: 450000, closing_day: 25, due_day: 5, archived: false },
+    { id: uid(), type: "credit", name: "Roxinho", color: "#8b5cf6", credit_limit: 800000, closing_day: 3, due_day: 10, archived: false },
+    { id: uid(), type: "credit", name: "Laranja", color: "#f97316", credit_limit: 450000, closing_day: 25, due_day: 5, archived: false },
+    { id: uid(), type: "benefit", name: "VR Refeição", color: "#ef4444", credit_limit: null, closing_day: 1, due_day: 1, archived: false },
   ];
-  const [roxo, laranja] = cards;
+  const [roxo, laranja, vr] = cards;
 
   const series: Series[] = [];
   const transactions: Transaction[] = [];
@@ -90,8 +91,16 @@ export function buildDemoData(): FinanceData {
     add({ name: "Uber", amount: between(25, 70), date: dateInMonth(m, 22), category_id: categories.transporte.id, payment_method: "pix" });
     add({ name: "Cinema", amount: between(45, 90), date: dateInMonth(m, 24), category_id: categories.lazer.id, payment_method: "card", card_id: roxo.id });
     if (i % 2 === 0) add({ name: "Farmácia", amount: between(30, 120), date: dateInMonth(m, 13), category_id: categories.saude.id, payment_method: "debit" });
+    // Cartão benefício: gastos menores que a recarga, a sobra acumula
+    const onVr = { payment_method: "benefit" as const, card_id: vr.id };
+    for (const d of [6, 13, 20, 27]) add({ ...onVr, name: "Almoço", amount: between(32, 58), date: dateInMonth(m, d), category_id: categories.alimentacao.id });
+    add({ ...onVr, name: "Padaria", amount: between(18, 40), date: dateInMonth(m, 10), category_id: categories.alimentacao.id });
+    add({ ...onVr, name: "Mercado (VR)", amount: between(220, 380), date: dateInMonth(m, 17), category_id: categories.mercado.id });
     if (i % 2 === 1) add({ kind: "income", name: "Projeto freelance", amount: between(800, 1800), date: dateInMonth(m, 20), category_id: categories.freela.id, payment_method: "pix", description: "Landing page para cliente" });
   }
+  // Recarga mensal do VR (entrada fixa no cartão benefício)
+  add({ kind: "income", name: "Recarga VR Refeição", amount: 90000, date: dateInMonth(start, 1), payment_method: "benefit", card_id: vr.id, recurrence: "fixed", description: "Crédito mensal do vale-refeição" });
+
   // Estorno no cartão
   add({ kind: "income", name: "Estorno compra online", amount: 8990, date: dateInMonth(addMonths(thisMonth, -1), 4), category_id: categories.compras.id, payment_method: "card", card_id: roxo.id });
 

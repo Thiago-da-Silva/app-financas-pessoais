@@ -91,7 +91,7 @@ export function Filters({ value, onChange, data }: { value: FilterState; onChang
           <option value="cash">Dinheiro</option>
           {data.cards.map((c) => (
             <option key={c.id} value={`card:${c.id}`}>
-              Cartão {c.name}
+              {c.type === "benefit" ? "Benefício" : "Cartão"} {c.name}
             </option>
           ))}
         </NativeSelect>

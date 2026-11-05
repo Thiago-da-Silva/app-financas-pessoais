@@ -9,6 +9,7 @@ import { deleteEntry, ensureFixed, FIXED_AHEAD, setPaid, undoDelete, type Delete
 import { MonthPicker } from "@/components/dashboard/MonthPicker";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { CardsSummary } from "@/components/dashboard/CardsSummary";
+import { BenefitsSummary } from "@/components/dashboard/BenefitsSummary";
 import { BudgetsPanel, CategoryChart, EvolutionChart } from "@/components/dashboard/Charts";
 import { applyFilters, EMPTY_FILTERS, Filters, type FilterState } from "@/components/dashboard/Filters";
 import { TransactionList, type RowActions } from "@/components/dashboard/TransactionList";
@@ -114,6 +115,7 @@ export default function DashboardPage() {
 
       <SummaryCards s={summary} carry={data.profile.carry_balance} />
       <CardsSummary data={data} month={month} />
+      <BenefitsSummary data={data} month={month} />
 
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         {/* Lançamentos */}

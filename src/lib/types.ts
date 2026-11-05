@@ -1,5 +1,7 @@
 export type Kind = "income" | "expense";
-export type PaymentMethod = "cash" | "pix" | "debit" | "card";
+export type PaymentMethod = "cash" | "pix" | "debit" | "card" | "benefit";
+export type BasicPaymentMethod = Exclude<PaymentMethod, "card" | "benefit">;
+export type CardType = "credit" | "benefit";
 export type SeriesType = "installment" | "fixed";
 export type Recurrence = "single" | SeriesType;
 
@@ -9,6 +11,8 @@ export interface Profile {
   avatar_url: string | null;
   initial_balance: number; // centavos
   carry_balance: boolean;
+  /** Somar saldo dos cartões benefício ao saldo geral (padrão: não). */
+  sum_benefits?: boolean;
 }
 
 export interface Category {
@@ -19,8 +23,11 @@ export interface Category {
   created_at?: string;
 }
 
+/** Cartão de crédito ou cartão benefício (VR/VA). */
 export interface CreditCard {
   id: string;
+  /** Ausente em dados antigos = crédito. */
+  type?: CardType;
   name: string;
   color: string;
   credit_limit: number | null;
@@ -71,7 +78,10 @@ export interface FinanceData {
   transactions: Transaction[];
 }
 
-export const PAYMENT_LABELS: Record<Exclude<PaymentMethod, "card">, string> = {
+export const isBenefitCard = (c: Pick<CreditCard, "type"> | null | undefined) => c?.type === "benefit";
+export const isCreditCard = (c: Pick<CreditCard, "type"> | null | undefined) => !!c && c.type !== "benefit";
+
+export const PAYMENT_LABELS: Record<BasicPaymentMethod, string> = {
   cash: "Dinheiro",
   pix: "Pix",
   debit: "Débito",

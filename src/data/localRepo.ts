@@ -3,13 +3,16 @@ import type { FinanceData } from "@/lib/types";
 import { buildDemoData } from "./demoSeed";
 import { safeStorage } from "@/lib/utils";
 
-const KEY = "cf-demo-data-v1";
+// v2: inclui cartão benefício (VR) nos dados de demonstração
+const KEY = "cf-demo-data-v2";
+const OLD_KEYS = ["cf-demo-data-v1"];
 const store = safeStorage();
 
 let memory: FinanceData | null = null;
 
 function read(): FinanceData {
   if (memory) return memory;
+  OLD_KEYS.forEach((k) => store.remove(k));
   const raw = store.get(KEY);
   if (raw) {
     try {

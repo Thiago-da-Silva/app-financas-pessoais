@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, CreditCard as CardIcon, Plus } from "lucide-react";
 import type { FinanceData } from "@/lib/types";
+import { isCreditCard } from "@/lib/types";
 import { cardUsage, invoicesForMonth } from "@/domain/finance";
 import { usePrefs } from "@/hooks/prefs";
 import { Card, Progress } from "@/components/ui/misc";
@@ -15,7 +16,9 @@ const store = safeStorage();
 export function CardsSummary({ data, month }: { data: FinanceData; month: string }) {
   const { money } = usePrefs();
   const [open, setOpen] = useState(() => store.get("cards-summary-open") === "1");
-  const cards = data.cards.filter((c) => !c.archived || data.transactions.some((t) => t.card_id === c.id && t.month === month));
+  const cards = data.cards.filter(
+    (c) => isCreditCard(c) && (!c.archived || data.transactions.some((t) => t.card_id === c.id && t.month === month)),
+  );
   const invoices = invoicesForMonth(data, month);
 
   const total = invoices.reduce((s, i) => s + i.total, 0);

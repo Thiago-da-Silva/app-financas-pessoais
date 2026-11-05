@@ -101,7 +101,7 @@ export function SummaryCards({ s, carry }: { s: MonthSummary; carry: boolean }) 
           value={s.predicted}
           icon={<Wallet />}
           tone="primary"
-          sub="ao final do mês"
+          sub={s.benefits != null ? `ao final do mês · inclui ${money(s.benefits)} de benefícios` : "ao final do mês"}
           className="col-span-2 lg:col-span-1"
           info={
             <p className="text-muted-foreground">

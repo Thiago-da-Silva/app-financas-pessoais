@@ -131,6 +131,23 @@ export default function ProfilePage() {
             </Button>
           </div>
         )}
+        {data.cards.some((c) => c.type === "benefit") && (
+          <label className="mt-5 flex cursor-pointer items-center justify-between gap-4 border-t border-border pt-4">
+            <div>
+              <p className="text-sm font-medium">Somar saldo dos cartões benefício ao saldo geral</p>
+              <p className="text-xs text-muted-foreground">
+                Desligado (padrão), o saldo do VR/VA aparece só na seção "Cartões benefício", porque esse dinheiro não paga outras contas.
+                Ligado, ele entra no saldo anterior, realizado e previsto (entradas e saídas continuam sem ele).
+              </p>
+            </div>
+            <Switch
+              checked={!!data.profile.sum_benefits}
+              onCheckedChange={(v) =>
+                run((r) => r.updateProfile({ sum_benefits: v }), (d) => ({ ...d, profile: { ...d.profile, sum_benefits: v } }))
+              }
+            />
+          </label>
+        )}
       </Section>
 
       <Section title="Aparência">

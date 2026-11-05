@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, CreditCard as CardIcon, Landmark, Plus, QrCode, Repeat } from "lucide-react";
+import { Banknote, CreditCard as CardIcon, Landmark, Plus, QrCode, Repeat, Utensils } from "lucide-react";
 import { toast } from "sonner";
 import type { FinanceData, Kind, PaymentMethod, Recurrence, Transaction } from "@/lib/types";
-import { competenceMonth, installmentMap, invoiceDueDate } from "@/domain/finance";
+import { isBenefitCard } from "@/lib/types";
+import { benefitSummary, competenceMonth, installmentMap, invoiceDueDate } from "@/domain/finance";
 import { createEntry, editEntry, type EditScope, type EntryInput } from "@/domain/operations";
 import { useAction } from "@/hooks/useFinance";
 import { usePrefs } from "@/hooks/prefs";
@@ -11,7 +12,7 @@ import { Field, Input, MoneyInput, Textarea } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { RichSelect, Segmented, Switch } from "@/components/ui/misc";
 import { CategoryDialog } from "@/components/CategoryForm";
-import { currentMonth, dateInMonth, formatDate, monthLabel, parts, today } from "@/lib/dates";
+import { currentMonth, dateInMonth, formatDate, monthLabel, monthOf, parts, today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export type FormMode = { type: "new"; kind?: Kind } | { type: "edit"; tx: Transaction } | { type: "duplicate"; tx: Transaction };
@@ -22,7 +23,7 @@ interface State {
   description: string;
   amount: number;
   category_id: string;
-  pay: string; // cash | pix | debit | card:<id>
+  pay: string; // cash | pix | debit | card:<id> (crédito ou benefício)
   date: string;
   paid: boolean;
   recurrence: Recurrence;
@@ -66,7 +67,7 @@ export function TransactionForm({
         description: t.description ?? "",
         amount: t.amount,
         category_id: t.category_id ?? "",
-        pay: t.payment_method === "card" ? `card:${t.card_id}` : t.payment_method,
+        pay: t.card_id ? `card:${t.card_id}` : t.payment_method,
         date: mode.type === "duplicate" ? defaultDate() : t.date,
         paid: mode.type === "duplicate" ? false : t.paid,
         recurrence: mode.type === "edit" && ser ? ser.type : "single",
@@ -104,7 +105,25 @@ export function TransactionForm({
 
   const activeCards = data.cards.filter((c) => !c.archived || s.pay === `card:${c.id}`);
   const selectedCard = s.pay.startsWith("card:") ? data.cards.find((c) => c.id === s.pay.slice(5)) : undefined;
-  const invMonth = selectedCard && s.date ? competenceMonth(s.date, selectedCard) : null;
+  const isBenefit = isBenefitCard(selectedCard);
+  const invMonth = selectedCard && !isBenefit && s.date ? competenceMonth(s.date, selectedCard) : null;
+  const benefitBalance = selectedCard && isBenefit && s.date ? benefitSummary(data, monthOf(s.date), selectedCard.id).balance : null;
+  const creditCards = activeCards.filter((c) => !isBenefitCard(c));
+  const benefitCards = activeCards.filter((c) => isBenefitCard(c));
+
+  function dateHint() {
+    if (selectedCard && invMonth)
+      return `Fatura de ${monthLabel(invMonth)} · vence ${formatDate(invoiceDueDate(invMonth, selectedCard))}`;
+    if (benefitBalance != null) {
+      // ao editar, o próprio lançamento já está no saldo
+      const own = editingTx && editingTx.card_id === selectedCard!.id ? (editingTx.kind === "income" ? editingTx.amount : -editingTx.amount) : 0;
+      const after = benefitBalance - own + (s.kind === "income" ? s.amount : -s.amount);
+      return after < 0
+        ? `Saldo insuficiente: o cartão ficará em ${money(after)}`
+        : `Saldo do cartão após este lançamento: ${money(after)}`;
+    }
+    return undefined;
+  }
 
   function toInput(): EntryInput {
     const isCard = s.pay.startsWith("card:");
@@ -114,10 +133,10 @@ export function TransactionForm({
       description: s.description || null,
       amount: s.amount,
       category_id: s.category_id || null,
-      payment_method: (isCard ? "card" : s.pay) as PaymentMethod,
+      payment_method: (isCard ? (isBenefit ? "benefit" : "card") : s.pay) as PaymentMethod,
       card_id: isCard ? s.pay.slice(5) : null,
       date: s.date,
-      paid: s.paid,
+      paid: isBenefit ? true : s.paid, // benefício é debitado na hora
       recurrence: s.recurrence,
       installments: s.installments,
     };
@@ -217,11 +236,7 @@ export function TransactionForm({
             <Field
               label="Data"
               error={errors.date}
-              hint={
-                selectedCard && invMonth
-                  ? `Fatura de ${monthLabel(invMonth)} · vence ${formatDate(invoiceDueDate(invMonth, selectedCard))}`
-                  : undefined
-              }
+              hint={dateHint()}
             >
               <Input type="date" value={s.date} onChange={(e) => set("date", e.target.value)} />
             </Field>
@@ -258,9 +273,15 @@ export function TransactionForm({
                   </PayChip>
                 );
               })}
-              {activeCards.map((c) => (
+              {creditCards.map((c) => (
                 <PayChip key={c.id} active={s.pay === `card:${c.id}`} onClick={() => set("pay", `card:${c.id}`)} color={c.color}>
                   <CardIcon className="size-4" style={{ color: c.color }} />
+                  <span className="truncate">{c.name}</span>
+                </PayChip>
+              ))}
+              {benefitCards.map((c) => (
+                <PayChip key={c.id} active={s.pay === `card:${c.id}`} onClick={() => set("pay", `card:${c.id}`)} color={c.color}>
+                  <Utensils className="size-4" style={{ color: c.color }} />
                   <span className="truncate">{c.name}</span>
                 </PayChip>
               ))}
@@ -321,13 +342,21 @@ export function TransactionForm({
             <p className="-mt-2 text-xs text-muted-foreground">Repete todo mês até você excluir ou encerrar. Ideal para salário, aluguel e assinaturas.</p>
           )}
 
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
-            <div>
-              <p className="text-sm font-medium">{s.kind === "income" ? "Já recebido" : "Já pago"}</p>
-              {s.recurrence !== "single" && !series && <p className="text-xs text-muted-foreground">Vale apenas para o primeiro mês.</p>}
-            </div>
-            <Switch checked={s.paid} onCheckedChange={(v) => set("paid", v)} />
-          </label>
+          {isBenefit ? (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              {s.kind === "income"
+                ? "Recarga no cartão benefício: soma ao saldo do cartão (separado do saldo geral)."
+                : "Gasto no cartão benefício: é descontado do saldo do cartão, sem precisar marcar como pago."}
+            </p>
+          ) : (
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">{s.kind === "income" ? "Já recebido" : "Já pago"}</p>
+                {s.recurrence !== "single" && !series && <p className="text-xs text-muted-foreground">Vale apenas para o primeiro mês.</p>}
+              </div>
+              <Switch checked={s.paid} onCheckedChange={(v) => set("paid", v)} />
+            </label>
+          )}
 
           <Field label="Descrição (opcional)">
             <Textarea value={s.description} onChange={(e) => set("description", e.target.value)} rows={2} placeholder="Detalhes, observações..." />
