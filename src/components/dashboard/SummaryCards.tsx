@@ -32,7 +32,7 @@ function Stat({
     primary: "bg-primary text-primary-foreground",
   }[tone];
   const body = (
-    <Card className={cn("flex flex-col gap-3 p-4", info && "cursor-help", className)}>
+    <Card className={cn("flex h-full flex-col gap-3 p-4", info && "cursor-help", !info && className)}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground sm:text-sm">{label}</span>
         <span className={cn("grid size-8 place-items-center rounded-xl [&_svg]:size-4", toneClass)}>{icon}</span>
@@ -45,7 +45,7 @@ function Stat({
   );
   if (!info) return body;
   return (
-    <InfoPopover trigger={<div tabIndex={0} className="rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">{body}</div>}>
+    <InfoPopover trigger={<div tabIndex={0} className={cn("rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>{body}</div>}>
       {info}
     </InfoPopover>
   );
@@ -102,7 +102,7 @@ export function SummaryCards({ s, carry }: { s: MonthSummary; carry: boolean }) 
           icon={<Wallet />}
           tone="primary"
           sub="ao final do mês"
-          className={cn(!carry && "col-span-2 lg:col-span-1", carry && "col-span-2 lg:col-span-1")}
+          className="col-span-2 lg:col-span-1"
           info={
             <p className="text-muted-foreground">
               {carry ? "Saldo anterior + " : ""}todas as entradas − todas as saídas do mês (pagas ou não).

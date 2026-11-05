@@ -103,7 +103,7 @@ export function buildDemoData(): FinanceData {
   for (const t of fixed) {
     const due = t.payment_method === "card" && t.card_id ? dateInMonth(t.month, cardsById.get(t.card_id)!.due_day) : t.date;
     t.paid = due < now;
-    if (t.paid && !leftOverdue && t.name === "Internet" && t.month === thisMonth) {
+    if (t.paid && !leftOverdue && t.name === "Internet" && t.month === addMonths(thisMonth, -1)) {
       t.paid = false;
       leftOverdue = true;
     }

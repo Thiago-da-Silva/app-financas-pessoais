@@ -192,11 +192,16 @@ export function cardUsage(data: FinanceData, card: CreditCard, month: string): C
   let used = 0;
   let currentInvoice = 0;
   let future = 0;
+  // Lançamentos fixos (assinaturas) só ocupam limite quando a cobrança acontece;
+  // parcelas comprometem o limite desde a compra.
+  const fixedSeries = new Set(data.series.filter((s) => s.type === "fixed").map((s) => s.id));
+  const now = today();
   for (const t of data.transactions) {
     if (t.card_id !== card.id) continue;
     const v = -signed(t);
     if (t.month === month) currentInvoice += v;
-    if (!t.paid) {
+    const notChargedYet = t.series_id != null && fixedSeries.has(t.series_id) && t.date > now;
+    if (!t.paid && !notChargedYet) {
       used += v;
       if (t.month > month) future += v;
     }

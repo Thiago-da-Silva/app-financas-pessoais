@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>({ type: "new" });
+  const [formKey, setFormKey] = useState(0);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
   // Gera lançamentos fixos à frente conforme o usuário navega pelos meses
@@ -55,6 +56,7 @@ export default function DashboardPage() {
 
   const openForm = (mode: FormMode) => {
     setFormMode(mode);
+    setFormKey((k) => k + 1);
     setFormOpen(true);
   };
 
@@ -164,7 +166,7 @@ export default function DashboardPage() {
         <Plus />
       </Button>
 
-      <TransactionForm open={formOpen} onOpenChange={setFormOpen} data={data} month={month} mode={formMode} />
+      <TransactionForm key={formKey} open={formOpen} onOpenChange={setFormOpen} data={data} month={month} mode={formMode} />
       <DeleteDialog tx={deleting} data={data} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
     </div>
   );

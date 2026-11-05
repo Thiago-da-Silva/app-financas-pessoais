@@ -97,7 +97,7 @@ export function TransactionList({
       </table>
 
       {/* Celular: lista compacta */}
-      <ul className="divide-y divide-border md:hidden">
+      <ul className="divide-y divide-border pb-16 md:hidden">
         {items.map((it) =>
           it.type === "tx" ? (
             <MobileRow key={it.tx.id} tx={it.tx} ctx={ctx} />
@@ -203,9 +203,9 @@ function DesktopRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: b
         tx.paid && "text-muted-foreground",
       )}
     >
-      <td className={cn("py-2.5 pl-4 tabular", nested && "pl-10", overdue && "font-medium text-expense")}>{formatDate(tx.date)}</td>
-      <td className="max-w-0 py-2.5 pr-3">
-        <div className="flex items-center gap-2">
+      <td className={cn("py-2.5 pl-4 tabular", nested && "text-muted-foreground", overdue && "font-medium text-expense")}>{formatDate(tx.date)}</td>
+      <td className={cn("max-w-0 py-2.5 pr-3", nested && "pl-6")}>
+        <div className={cn("flex items-center gap-2", nested && "border-l-2 pl-3")} style={nested && card ? { borderColor: card.color } : undefined}>
           <NameCell tx={tx} ctx={ctx} className={cn(tx.paid && "[&>span:first-child]:text-muted-foreground")} />
           {overdue && !nested && <OverdueTag />}
         </div>
@@ -274,14 +274,14 @@ function DesktopInvoice({ invoice, ctx }: { invoice: Invoice; ctx: Ctx }) {
             <CardChip data={ctx.data} card={invoice.card} month={ctx.month}>
               <span className="font-semibold">{invoice.card.name}</span>
             </CardChip>
-            <span className="text-xs text-muted-foreground">
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
               {invoice.items.length} {invoice.items.length === 1 ? "item" : "itens"}
             </span>
             {overdue && <OverdueTag />}
           </div>
         </td>
         <td className="py-3 text-xs text-muted-foreground">{invoice.somePaid && !invoice.allPaid ? `${money(invoice.paidTotal)} pago` : ""}</td>
-        <td className="py-3 text-muted-foreground">Cartão de crédito</td>
+        <td className="py-3 text-muted-foreground">Crédito</td>
         <td className="py-3 pr-4 text-right font-semibold tabular">− {money(invoice.total)}</td>
         <td className="py-3 text-center">
           <Checkbox
@@ -315,7 +315,7 @@ function MobileRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: bo
   const card = tx.card_id ? ctx.cards.get(tx.card_id) : undefined;
   const c = tx.category_id ? ctx.categories.get(tx.category_id) : undefined;
   return (
-    <li className={cn("flex items-center gap-3 py-3 pr-1", nested ? "pl-6" : "pl-3")}>
+    <li className={cn("flex items-center gap-3 py-3 pr-1", nested ? "pl-3" : "pl-3")}>
       <Checkbox
         checked={tx.paid}
         onCheckedChange={(v) => ctx.actions.onTogglePaid([tx.id], v)}
@@ -328,10 +328,10 @@ function MobileRow({ tx, ctx, nested }: { tx: Transaction; ctx: Ctx; nested?: bo
           <span>·</span>
           <Dot color={c?.color ?? "#94a3b8"} className="size-2" />
           <span className="truncate">{c?.name ?? "Sem categoria"}</span>
-          {!nested && (
+          {!nested && !card && (
             <>
               <span>·</span>
-              <span className="truncate">{card ? card.name : PAYMENT_LABELS[tx.payment_method as "pix"]}</span>
+              <span className="shrink-0">{PAYMENT_LABELS[tx.payment_method as "pix"]}</span>
             </>
           )}
           {overdue && <OverdueTag />}
@@ -371,21 +371,24 @@ function MobileInvoice({ invoice, ctx }: { invoice: Invoice; ctx: Ctx }) {
               {invoice.items.length === 1 ? "item" : "itens"}
             </p>
           </div>
-          <span className="text-sm font-semibold tabular">− {money(invoice.total)}</span>
-          <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+          <span className="whitespace-nowrap text-sm font-semibold tabular">− {money(invoice.total)}</span>
+          <ChevronDown className={cn("mr-2 size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
         </button>
-        <div className="w-8 shrink-0">
-          <CardChip data={ctx.data} card={invoice.card} month={ctx.month}>
-            <Info className="size-4 text-muted-foreground" />
-          </CardChip>
-        </div>
       </div>
       {open && (
-        <ul className="mb-2 ml-3 divide-y divide-border rounded-xl border-l-2 bg-muted/30" style={{ borderLeftColor: invoice.card.color }}>
-          {invoice.items.map((t) => (
-            <MobileRow key={t.id} tx={t} ctx={ctx} nested />
-          ))}
-        </ul>
+        <div className="mb-3 ml-3 mr-1 overflow-hidden rounded-xl border-l-2 bg-muted/40" style={{ borderLeftColor: invoice.card.color }}>
+          <div className="flex items-center justify-between px-3 pt-2.5 text-xs text-muted-foreground">
+            <CardChip data={ctx.data} card={invoice.card} month={ctx.month}>
+              Ver limite do cartão
+            </CardChip>
+            {invoice.somePaid && !invoice.allPaid && <span>{money(invoice.paidTotal)} pago</span>}
+          </div>
+          <ul className="divide-y divide-border">
+            {invoice.items.map((t) => (
+              <MobileRow key={t.id} tx={t} ctx={ctx} nested />
+            ))}
+          </ul>
+        </div>
       )}
     </li>
   );

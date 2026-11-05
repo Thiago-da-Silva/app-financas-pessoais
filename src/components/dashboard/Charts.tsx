@@ -43,7 +43,7 @@ export function CategoryChart({ transactions, categories }: { transactions: Tran
   };
 
   return (
-    <Card className="flex flex-col p-4">
+    <Card className="@container flex flex-col p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">Por categoria</h3>
         <div className="flex gap-2">
@@ -72,7 +72,7 @@ export function CategoryChart({ transactions, categories }: { transactions: Tran
       {slices.length === 0 ? (
         <EmptyState icon={<ChartPie />} title="Sem dados neste mês" />
       ) : view === "donut" ? (
-        <div className="mt-2 grid items-center gap-4 sm:grid-cols-[200px_1fr]">
+        <div className="mt-2 grid items-center gap-4 @lg:grid-cols-[200px_1fr]">
           <div className="relative mx-auto h-[200px] w-[200px]">
             <ResponsiveContainer>
               <PieChart>
@@ -246,12 +246,12 @@ export function BudgetsPanel({ data, month }: { data: FinanceData; month: string
   const items = budgetProgress(data, month);
   if (!items.length) return null;
   return (
-    <Card className="p-4">
+    <Card className="@container p-4">
       <div className="flex items-center gap-2">
         <Target className="size-4 text-muted-foreground" />
         <h3 className="font-semibold">Orçamentos do mês</h3>
       </div>
-      <ul className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+      <ul className="mt-3 grid gap-x-6 gap-y-3 @xl:grid-cols-2">
         {items.map(({ category, spent, budget, pct }) => (
           <li key={category.id}>
             <div className="mb-1.5 flex items-center gap-2 text-sm">
