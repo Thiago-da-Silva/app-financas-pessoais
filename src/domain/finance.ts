@@ -101,7 +101,7 @@ export const isUndefinedAmount = (t: Pick<Transaction, "amount" | "paid">) => t.
 export function previousBalance(data: FinanceData, month: string): number {
   if (!data.profile.carry_balance) return 0;
   let total = data.profile.initial_balance;
-  for (const t of data.transactions) if (t.paid && t.month < month && !isBenefitTx(t)) total += signed(t);
+  for (const t of data.transactions) if (t.paid && t.month < month && !isBenefitTx(t) && !t.ignored) total += signed(t);
   return total;
 }
 
@@ -119,6 +119,7 @@ export function monthSummary(data: FinanceData, month: string): MonthSummary {
 
   for (const t of data.transactions) {
     if (isBenefitTx(t)) continue; // benefícios têm saldo próprio
+    if (t.ignored) continue; // marcado como "desconsiderar dos saldos"
     if (t.month === month && isUndefinedAmount(t)) undefinedCount++;
     if (t.month === month) {
       // crédito/estorno no cartão abate as saídas (não é uma "entrada" de dinheiro)
@@ -186,7 +187,7 @@ export function benefitSummary(data: FinanceData, month: string, cardId?: string
   let expense = 0;
   let happened = 0;
   for (const t of data.transactions) {
-    if (!isBenefitTx(t) || (cardId && t.card_id !== cardId)) continue;
+    if (!isBenefitTx(t) || t.ignored || (cardId && t.card_id !== cardId)) continue;
     if (t.month < month) previous += signed(t);
     else if (t.month === month) {
       if (t.kind === "income") income += t.amount;

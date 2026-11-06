@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, Info, Pencil, Receipt, Repeat, Trash2, Utensils } from "lucide-react";
+import { ChevronDown, Copy, CreditCard as CardIcon, Ellipsis, EyeOff, Info, Pencil, Receipt, Repeat, Trash2, Utensils } from "lucide-react";
 import type { Category, CreditCard, FinanceData, Transaction } from "@/lib/types";
 import { PAYMENT_LABELS } from "@/lib/types";
 import { installmentMap, isBenefitTx, isOverdue, isUndefinedAmount, type BenefitGroup, type Invoice } from "@/domain/finance";
@@ -176,6 +176,14 @@ function NameCell({ tx, ctx, className }: { tx: Transaction; ctx: Ctx; className
       <span className="truncate font-medium">{tx.name}</span>
       {inst && <span className="shrink-0 text-xs text-muted-foreground tabular">({inst.n}/{inst.total})</span>}
       {fixed && <Repeat className="size-3.5 shrink-0 text-muted-foreground" aria-label="Fixo mensal" />}
+      {tx.ignored && (
+        <span
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground"
+          title="Desconsiderado dos saldos: não entra nos cards de saldo"
+        >
+          <EyeOff className="size-3" /> fora do saldo
+        </span>
+      )}
       {tx.description && <Info className="size-3.5 shrink-0 text-muted-foreground" />}
     </span>
   );
@@ -217,7 +225,7 @@ function Amount({ tx, className }: { tx: Transaction; className?: string }) {
       </span>
     );
   return (
-    <span className={cn("font-semibold tabular whitespace-nowrap", income ? "text-income" : "text-foreground", className)}>
+    <span className={cn("font-semibold tabular whitespace-nowrap", income ? "text-income" : "text-foreground", tx.ignored && "opacity-50", className)}>
       {income ? "+ " : "− "}
       {money(tx.amount)}
     </span>

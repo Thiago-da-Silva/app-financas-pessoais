@@ -51,6 +51,8 @@ export interface Series {
   start_month: string; // YYYY-MM-01
   end_month: string | null;
   generated_until: string | null;
+  /** Ocorrências novas já nascem desconsideradas dos saldos. */
+  ignored?: boolean;
   created_at?: string;
 }
 
@@ -67,6 +69,8 @@ export interface Transaction {
   payment_method: PaymentMethod;
   card_id: string | null;
   paid: boolean;
+  /** Desconsiderado dos cards de saldo (continua na lista, gráficos e fatura). */
+  ignored?: boolean;
   created_at?: string;
 }
 

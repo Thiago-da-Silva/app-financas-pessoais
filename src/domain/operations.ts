@@ -19,6 +19,8 @@ export interface EntryInput {
   paid: boolean;
   recurrence: Recurrence;
   installments: number;
+  /** Desconsiderar dos cards de saldo. */
+  ignored?: boolean;
 }
 
 export type EditScope = "one" | "following";
@@ -26,7 +28,7 @@ export type DeleteScope = "one" | "following" | "all";
 
 type Common = Pick<
   Transaction,
-  "kind" | "name" | "description" | "amount" | "category_id" | "payment_method" | "card_id"
+  "kind" | "name" | "description" | "amount" | "category_id" | "payment_method" | "card_id" | "ignored"
 >;
 
 function common(input: EntryInput | Series): Common {
@@ -39,7 +41,14 @@ function common(input: EntryInput | Series): Common {
     category_id: input.category_id || null,
     payment_method: input.payment_method,
     card_id: isCard ? input.card_id : null,
+    // só envia o campo quando marcado: assim continua funcionando mesmo antes da migration
+    ...(input.ignored ? { ignored: true } : {}),
   };
+}
+
+/** Ao desmarcar "desconsiderar dos saldos", grava `false` apenas onde estava marcado. */
+function unignore(wasIgnored: boolean | undefined, input: EntryInput) {
+  return !input.ignored && wasIgnored ? { ignored: false } : {};
 }
 
 function findCard(data: Pick<FinanceData, "cards">, id: string | null): CreditCard | undefined {
@@ -155,7 +164,7 @@ export async function editEntry(repo: Repo, data: FinanceData, tx: Transaction, 
   // Lançamento único que virou parcelado/fixo
   if (!series) {
     if (input.recurrence === "single") {
-      await repo.update("transactions", [{ id: tx.id, ...base, date: input.date, month: month0, paid: input.paid }]);
+      await repo.update("transactions", [{ id: tx.id, ...base, ...unignore(tx.ignored, input), date: input.date, month: month0, paid: input.paid }]);
     } else {
       await repo.remove("transactions", [tx.id]);
       await createEntry(repo, data, input, tx.id);
@@ -164,7 +173,7 @@ export async function editEntry(repo: Repo, data: FinanceData, tx: Transaction, 
   }
 
   if (scope === "one") {
-    await repo.update("transactions", [{ id: tx.id, ...base, date: input.date, month: month0, paid: input.paid }]);
+    await repo.update("transactions", [{ id: tx.id, ...base, ...unignore(tx.ignored, input), date: input.date, month: month0, paid: input.paid }]);
   } else {
     // este e os próximos (o histórico anterior não muda)
     const day = parts(input.date).d;
@@ -174,11 +183,12 @@ export async function editEntry(repo: Repo, data: FinanceData, tx: Transaction, 
       rows.map((r) => ({
         id: r.id,
         ...base,
+        ...unignore(r.ignored, input),
         ...occurrence(input.date, month0, monthDiff(tx.month, r.month), day),
         paid: r.id === tx.id ? input.paid : r.paid,
       })),
     );
-    await repo.update("series", [{ id: series.id, ...base, day }]);
+    await repo.update("series", [{ id: series.id, ...base, ...unignore(series.ignored, input), day }]);
   }
 
   // Alteração da quantidade de parcelas

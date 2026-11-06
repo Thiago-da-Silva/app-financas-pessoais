@@ -28,6 +28,7 @@ interface State {
   paid: boolean;
   recurrence: Recurrence;
   installments: number;
+  ignored: boolean;
 }
 
 const PM_ICONS = { cash: Banknote, pix: QrCode, debit: Landmark } as const;
@@ -75,6 +76,7 @@ export function TransactionForm({
         paid: mode.type === "duplicate" ? false : t.paid,
         recurrence: mode.type === "edit" && ser ? ser.type : "single",
         installments: info?.total ?? 2,
+        ignored: !!t.ignored,
       };
     }
     return {
@@ -88,6 +90,7 @@ export function TransactionForm({
       paid: false,
       recurrence: "single",
       installments: 2,
+      ignored: false,
     };
   }
 
@@ -144,6 +147,7 @@ export function TransactionForm({
       paid: isBenefit ? true : s.paid, // benefício é debitado na hora
       recurrence: s.recurrence,
       installments: s.installments,
+      ignored: s.ignored,
     };
   }
 
@@ -368,6 +372,16 @@ export function TransactionForm({
               <Switch checked={s.paid} onCheckedChange={(v) => set("paid", v)} />
             </label>
           )}
+
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
+            <div>
+              <p className="text-sm font-medium">Desconsiderar dos saldos</p>
+              <p className="text-xs text-muted-foreground">
+                Não entra nos cards de saldo lá em cima (entradas, saídas, realizado e previsto). Continua na lista, nos gráficos e na fatura.
+              </p>
+            </div>
+            <Switch checked={s.ignored} onCheckedChange={(v) => set("ignored", v)} />
+          </label>
 
           <Field label="Descrição (opcional)">
             <Textarea value={s.description} onChange={(e) => set("description", e.target.value)} rows={2} placeholder="Detalhes, observações..." />

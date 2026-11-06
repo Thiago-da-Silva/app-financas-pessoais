@@ -25,7 +25,7 @@ Os testes unitários (Vitest) cobrem as regras de negócio em `src/domain` (fatu
 ## Configurando o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (plano gratuito).
-2. No **SQL Editor**, cole e rode, **em ordem**, cada arquivo de [`supabase/migrations`](supabase/migrations) (`20261104000000_init.sql`, depois `20261105000000_benefit_cards.sql`). Elas criam as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
+2. No **SQL Editor**, cole e rode, **em ordem**, cada arquivo de [`supabase/migrations`](supabase/migrations) (`20261104000000_init.sql`, `20261105000000_benefit_cards.sql` e `20261106000000_ignore_in_balance.sql`). Elas criam as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
 3. Em **Authentication → URL Configuration**, informe a URL do site (ex.: `https://seu-app.onrender.com`) em *Site URL* e em *Redirect URLs*, incluindo `https://seu-app.onrender.com/redefinir-senha`.
 4. Copie `.env.example` para `.env` e preencha com os dados de **Project Settings → API**:
 
@@ -60,6 +60,8 @@ O plano gratuito pausa projetos após 7 dias sem uso. O workflow [`.github/workf
 | **Limite do cartão** | Comprometido = itens não pagos, incluindo parcelas futuras. Assinaturas fixas só contam quando cobradas. |
 | **Estorno** | Uma *entrada* paga com cartão abate a fatura e devolve limite. |
 | **Cartão benefício (VR/VA)** | Tem saldo próprio que acumula indefinidamente: saldo anterior + recargas − gastos. Fica fora dos saldos gerais, a menos que a opção "Somar saldo dos cartões benefício" esteja ligada no Perfil (aí entra no saldo anterior, realizado e previsto; entradas e saídas continuam sem ele). Gastos no benefício não precisam ser marcados como pagos e nunca ficam vencidos. |
+| **Desconsiderar dos saldos** | Opção no lançamento: ele continua na lista, nos gráficos por categoria e na fatura, mas não entra nos cards de saldo (saldo anterior, entradas, saídas, realizado, previsto) nem nos avisos de vencido/a definir. Em séries, respeita "somente este mês" / "este e os próximos". |
+| **Valor zerado** | Permitido após confirmação. Pendente com R$ 0,00 aparece como "A definir" e é contado no aviso do saldo previsto. |
 
 ## Estrutura
 
