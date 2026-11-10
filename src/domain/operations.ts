@@ -35,8 +35,8 @@ function common(input: EntryInput | Series): Common {
   const isCard = input.payment_method === "card" || input.payment_method === "benefit";
   return {
     kind: input.kind,
-    name: input.name.trim(),
-    description: input.description?.trim() ? input.description.trim() : null,
+    name: input.name.trim().slice(0, 120),
+    description: input.description?.trim() ? input.description.trim().slice(0, 1000) : null,
     amount: input.amount,
     category_id: input.category_id || null,
     payment_method: input.payment_method,

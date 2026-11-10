@@ -39,10 +39,10 @@ export default function ResetPasswordPage() {
         <h1 className="mt-4 text-xl font-semibold">Definir nova senha</h1>
         <form onSubmit={submit} className="mt-5 flex flex-col gap-4">
           <Field label="Nova senha">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" maxLength={72} />
           </Field>
           <Field label="Confirmar senha">
-            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
+            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" maxLength={72} />
           </Field>
           {error && <p className="text-sm text-expense">{error}</p>}
           <Button type="submit" disabled={busy}>

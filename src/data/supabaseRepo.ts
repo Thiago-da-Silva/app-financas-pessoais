@@ -95,5 +95,18 @@ export function createSupabaseRepo(sb: SupabaseClient, userId: string): Repo {
       if (error) throw error;
       return sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
     },
+
+    async deleteAccount() {
+      // 1) fotos de perfil (o banco não apaga arquivos do Storage sozinho)
+      const { data: files } = await sb.storage.from("avatars").list(userId, { limit: 1000 });
+      if (files?.length) {
+        const { error } = await sb.storage.from("avatars").remove(files.map((f) => `${userId}/${f.name}`));
+        if (error) throw error;
+      }
+      // 2) todos os dados + login, numa função do banco que só apaga o usuário logado
+      const { error } = await sb.rpc("delete_my_account");
+      if (error) throw error;
+      await sb.auth.signOut({ scope: "local" });
+    },
   };
 }

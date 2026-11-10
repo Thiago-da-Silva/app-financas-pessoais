@@ -31,6 +31,8 @@ interface State {
   ignored: boolean;
 }
 
+export const DESCRIPTION_MAX = 1000;
+
 const PM_ICONS = { cash: Banknote, pix: QrCode, debit: Landmark } as const;
 
 export function TransactionForm({
@@ -383,8 +385,17 @@ export function TransactionForm({
             <Switch checked={s.ignored} onCheckedChange={(v) => set("ignored", v)} />
           </label>
 
-          <Field label="Descrição (opcional)">
-            <Textarea value={s.description} onChange={(e) => set("description", e.target.value)} rows={2} placeholder="Detalhes, observações..." />
+          <Field
+            label="Descrição (opcional)"
+            hint={s.description.length > 800 ? `${s.description.length}/${DESCRIPTION_MAX} caracteres` : undefined}
+          >
+            <Textarea
+              value={s.description}
+              maxLength={DESCRIPTION_MAX}
+              onChange={(e) => set("description", e.target.value.slice(0, DESCRIPTION_MAX))}
+              rows={2}
+              placeholder="Detalhes, observações..."
+            />
           </Field>
           <button type="submit" className="hidden" />
         </form>

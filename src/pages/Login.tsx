@@ -113,12 +113,13 @@ export default function LoginPage() {
           <form onSubmit={submit} className="mt-5 flex flex-col gap-4">
             {tab === "signup" && (
               <Field label="Nome" htmlFor="name">
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+                <Input id="name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
               </Field>
             )}
             <Field label="E-mail" htmlFor="email">
               <Input
                 id="email"
+                maxLength={254}
                 type={tab === "login" ? "text" : "email"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -143,6 +144,7 @@ export default function LoginPage() {
               >
                 <Input
                   id="password"
+                  maxLength={72}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

@@ -13,4 +13,6 @@ export interface Repo {
   remove(table: Table, ids: string[]): Promise<void>;
   updateProfile(patch: Partial<Omit<Profile, "id">>): Promise<void>;
   uploadAvatar(file: File): Promise<string>;
+  /** Apaga todos os dados do usuário e o próprio login (LGPD). */
+  deleteAccount(): Promise<void>;
 }

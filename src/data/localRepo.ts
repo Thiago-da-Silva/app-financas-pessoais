@@ -107,5 +107,8 @@ export function createLocalRepo(): Repo {
     async uploadAvatar(file: File) {
       return fileToDataUrl(file);
     },
+    async deleteAccount() {
+      resetDemoData();
+    },
   };
 }

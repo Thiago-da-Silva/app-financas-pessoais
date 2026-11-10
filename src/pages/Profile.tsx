@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Download, KeyRound, LogOut, Monitor, Moon, RotateCcw, Sun } from "lucide-react";
+import { Camera, Download, KeyRound, LogOut, Monitor, Moon, RotateCcw, Sun, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/data/session";
@@ -37,6 +37,9 @@ export default function ProfilePage() {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -82,7 +85,7 @@ export default function ProfilePage() {
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onAvatar(e.target.files?.[0])} />
           </div>
           <div className="flex flex-1 flex-col gap-3">
-            <Field label="Nome"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+            <Field label="Nome"><Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></Field>
             <Field label="E-mail"><Input value={email ?? ""} disabled /></Field>
           </div>
         </div>
@@ -184,6 +187,72 @@ export default function ProfilePage() {
         </div>
       </Section>
 
+      <Card className="border-expense/30 p-5">
+        <h2 className="font-semibold text-expense">Excluir minha conta</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Apaga permanentemente sua conta e todos os seus dados: lançamentos, cartões, categorias, perfil e foto. Essa ação não pode
+          ser desfeita.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-4 border-expense/40 text-expense hover:bg-expense-soft"
+          onClick={() => {
+            setDeleteConfirm("");
+            setDeleteOpen(true);
+          }}
+        >
+          <Trash2 /> Excluir minha conta
+        </Button>
+      </Card>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(o) => !deleting && setDeleteOpen(o)}
+        title="Excluir conta permanentemente?"
+        footer={
+          <>
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm.trim().toUpperCase() !== "EXCLUIR" || deleting}
+              onClick={async () => {
+                if (!repo) return;
+                setDeleting(true);
+                try {
+                  await repo.deleteAccount();
+                  qc.clear();
+                  await signOut();
+                  toast.success(mode === "demo" ? "Demonstração apagada" : "Sua conta e seus dados foram excluídos");
+                } catch (e) {
+                  toast.error("Não foi possível excluir a conta", { description: e instanceof Error ? e.message : String(e) });
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? <Spinner className="size-4" /> : <Trash2 />} Excluir tudo
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3 rounded-xl bg-expense-soft p-3 text-sm text-expense">
+            <TriangleAlert className="size-5 shrink-0" />
+            <p>
+              Serão apagados <b>{data.transactions.length} lançamentos</b>, {data.cards.length} cartões, {data.categories.length} categorias,
+              seu perfil{data.profile.avatar_url ? ", sua foto" : ""} e o seu login. Não há como recuperar depois.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => exportCsv(data, data.transactions, `financas-backup-${today()}.csv`)}>
+            <Download /> Baixar meus dados antes (CSV)
+          </Button>
+          <Field label={<>Para confirmar, digite <b className="text-foreground">EXCLUIR</b></>}>
+            <Input value={deleteConfirm} maxLength={20} onChange={(e) => setDeleteConfirm(e.target.value)} autoComplete="off" placeholder="EXCLUIR" />
+          </Field>
+        </div>
+      </Dialog>
+
       <Dialog
         open={pwOpen}
         onOpenChange={setPwOpen}
@@ -210,8 +279,8 @@ export default function ProfilePage() {
         }
       >
         <div className="flex flex-col gap-4">
-          <Field label="Nova senha"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></Field>
-          <Field label="Confirmar nova senha"><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" /></Field>
+          <Field label="Nova senha"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" maxLength={72} /></Field>
+          <Field label="Confirmar nova senha"><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" maxLength={72} /></Field>
         </div>
       </Dialog>
 

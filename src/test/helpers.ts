@@ -30,6 +30,7 @@ export function memoryRepo(initial: FinanceData): Repo & { data: FinanceData } {
     async uploadAvatar() {
       return "";
     },
+    async deleteAccount() {},
   };
   return repo;
 }
