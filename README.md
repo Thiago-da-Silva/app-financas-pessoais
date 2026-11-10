@@ -25,7 +25,7 @@ Os testes unitários (Vitest) cobrem as regras de negócio em `src/domain` (fatu
 ## Configurando o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (plano gratuito).
-2. No **SQL Editor**, cole e rode, **em ordem**, cada arquivo de [`supabase/migrations`](supabase/migrations) (`20261104000000_init.sql`, `20261105000000_benefit_cards.sql` e `20261106000000_ignore_in_balance.sql`). Elas criam as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
+2. No **SQL Editor**, cole e rode, **em ordem**, cada arquivo de [`supabase/migrations`](supabase/migrations) (`20261104000000_init.sql`, `20261105000000_benefit_cards.sql`, `20261106000000_ignore_in_balance.sql` e `20261110000000_security_hardening.sql`). Elas criam as tabelas, as regras de segurança (RLS), as categorias padrão de cada novo usuário e o bucket `avatars` para fotos de perfil.
 3. Em **Authentication → URL Configuration**, informe a URL do site (ex.: `https://seu-app.onrender.com`) em *Site URL* e em *Redirect URLs*, incluindo `https://seu-app.onrender.com/redefinir-senha`.
 4. Copie `.env.example` para `.env` e preencha com os dados de **Project Settings → API**:
 
@@ -35,6 +35,10 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
 > A chave *anon* é pública por natureza: a segurança vem das políticas RLS. Nunca use a chave `service_role` no frontend.
+
+### Verificando a segurança (RLS)
+
+Rode [`supabase/tests/rls_check.sql`](supabase/tests/rls_check.sql) no SQL Editor. Ele simula um visitante sem login, outra pessoa logada e o dono dos dados, e mostra uma tabela em que todas as linhas devem ter `ok = true`. Não altera nenhum dado. Vale rodar sempre que mudar o banco.
 
 ## Deploy no Render (grátis)
 
