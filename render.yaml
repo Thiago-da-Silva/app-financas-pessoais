@@ -31,3 +31,32 @@ services:
       - path: /index.html
         name: Cache-Control
         value: no-cache
+
+      # ---- Cabeçalhos de segurança (todas as páginas) ----
+      # CSP: de onde o site pode carregar scripts/estilos/fontes/imagens e para onde
+      # pode enviar dados. Se mudar o projeto do Supabase, atualize o endereço abaixo.
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          default-src 'self';
+          script-src 'self';
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com;
+          img-src 'self' data: blob: https://zrpwuhaiilryyztjyzhw.supabase.co;
+          connect-src 'self' https://zrpwuhaiilryyztjyzhw.supabase.co wss://zrpwuhaiilryyztjyzhw.supabase.co;
+          frame-ancestors 'none';
+          base-uri 'self';
+          form-action 'self';
+          object-src 'none'
+      # impede que o site seja aberto dentro de outro site (clickjacking)
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      # links externos não recebem o endereço completo da página
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      # desliga recursos do navegador que o app não usa
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
